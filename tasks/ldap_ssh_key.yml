@@ -1,0 +1,46 @@
+# New module in ansible 2.3
+# http://docs.ansible.com/ansible/ldap_attr_module.html#ldap-attr
+# TODO better detect non existing user,
+#   actualy add a simple failed_when: tru
+#   "msg": "Cannot search for attribute sshPublicKey" when the user don't exist
+---
+# Ldap Master (sync with Edifxio/Mot/Seb/Ebtrans)
+- hosts: localhost
+  vars_files: 
+    - "conf/{{ uid }}.yml"
+  tasks:
+    # Open the OpenVPN via nmcli (network manager)
+    - name: Enable OpenVPN to Name
+      changed_when: false
+      failed_when: false
+      command: "nmcli connection up Name"
+      when: nmcli_name is defined
+
+- hosts: ldap_server
+  vars:
+    - dc: "dc=XXXX,dc=com"
+    - server_uri: "ldaps://ldap_server:636"
+  vars_files: 
+    - "conf/XXX.yml"
+  gather_facts: no
+  tasks:
+   - name: Update sshPublicKey 
+     ldap_attr:
+       dn: "uid={{ item.username }},ou=People,{{ dc }}"
+       name: sshPublicKey
+       state: exact
+       values: "{{ item.pubkey }}"
+       server_uri: '{{ server_uri }}'
+       bind_dn: '{{ bind_dn }}'
+       bind_pw: '{{ bind_pw }}'
+     with_items : "{{ admin_users }}"
+
+- hosts: localhost
+  vars_files: 
+    - "conf/{{ uid }}.yml"
+  tasks:
+    # Close the OpenVPN to BAE via nmcli (network manager)
+    - name: Disable OpenVPN to Name
+      changed_when: false
+      failed_when: false
+      command: "nmcli connection down Name"

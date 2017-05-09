@@ -1,0 +1,64 @@
+# New module on ansible 2.3 :
+# http://docs.ansible.com/ansible/ldap_entry_module.html
+---
+- hosts: localhost
+  tasks:
+
+    # Open the OpenVPN via nmcli (network manager)
+    - name: Enable OpenVPN to Name
+      changed_when: false
+      failed_when: false
+      command: "nmcli connection up Name"
+      when: nmcli_name is defined
+
+# Due to tls self signed certificat error , execute it on edfxeuw1aadmx01...
+- hosts: edfxeuw1aadmx01
+  vars:
+    - dc: "dc=XXXX,dc=XXX"
+    - server_uri: "ldaps://ldap_server:636"
+  gather_facts: no
+  tasks:
+    #Prepare ALL variable :        
+    - name:  Set cn , sn , uidNumber , compagny , gidNumber , loginShell, mail
+      set_fact:
+        compagny: "{% if compagny is defined %}{{ compagny }}{% else %}{{ mail.split('@')[1].split('.')[0] }}{% endif %}"
+        ldap_param1:
+          cn: "{% if cn is defined %}{{ cn }}{% else %}{{ mail.split('@')[0].split('.')[1] }}{% endif %}"
+          sn: "{% if sn is defined %}{{ sn }}{% else %}{{ mail.split('@')[0].split('.')[0] }}{% endif %}"
+          mail: "{{ mail }}"
+    # uid can use sn + cn so need to do it after :
+    - name: Set uid
+      set_fact:
+        ldap_param3:
+          uid: "{% if uid is defined %}{{ uid }}{% else %}{{ ldap_param1.sn[0:1] }}{{ ldap_param1.cn }}{% endif %}"
+          givenName: "{{ ldap_param1.sn }}"
+    - name: Merge Variable Together
+      set_fact:
+        ldap_param="{{ ldap_param1|combine(ldap_param2|default({}), recursive=True) }}"
+    - name: debug
+      debug:
+        var: ldap_param
+    - name: Ask Confirmation
+      pause: 
+        prompt: 'Please confirm you want to create This Web Account! Press return to continue. Press Ctrl+c and then "a" to abort'
+    - name: Create WebAccount
+      ldap_entry:
+        dn: uid={{ uid }},ou=Web_People,ou=XXXX,{{ dc }}
+        objectClass: 
+          - inetAccount
+          - top
+          - shadowAccount
+        server_uri: '{{ server_uri }}'
+        bind_dn: '{{ bind_dn }}'
+        bind_pw: '{{ bind_pw }}'
+        attributes: "{{ ldap_param }}"
+    - name: Add group access
+      ldap_attr:
+        dn: "cn=group_name,ou=Group,{{ dc }}"
+        name: memberUid
+        state: present
+        values: "{{ uid }}"
+        server_uri: '{{ server_uri }}'
+        bind_dn: '{{ bind_dn }}'
+        bind_pw: '{{ bind_pw }}'
+      when: group_access is defined
