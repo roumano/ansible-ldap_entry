@@ -86,7 +86,7 @@ with file conf/webpeople.yml :
 uid: test10
 sn: christian
 cn: CommonName
-mail: christian.iuga@mail.com
+mail: christian.XXX@XXXX.com
 description: "2017/01/19 Ticket #9999 create account {{ uid }}"
 ```
 
