@@ -12,7 +12,7 @@ ldap_attr http://docs.ansible.com/ansible/ldap_attr_module.html
 
 Dependencies
 ------------
-Need role quinot.lookup_ldap to get information from ldap
+Need role quinot.lookup_ldap to get information from ldap (used only for UnixAccount to known which uidNumber are already used)
 
 Role Variables
 --------------
@@ -34,8 +34,21 @@ Example Playbook
 ----------------
 
 ## WebPeople
-
-Need to create a file (or via extra-vars ligne arguement) with variable needed : 
+enable it with job: webaccount
+```
+---
+- name: Create WebAccount
+  hosts: localhost
+  gather_facts: no
+  vars:
+    - job: webaccount
+    - mail: christian.iuga@edifixio.com
+    - description: "{{ ansible_date_time.date }}: create account for {{ mail }}"
+    - group_name: 'cn=wiki'
+  roles:
+    - ansible-ldap_entry
+```
+or you can create a configuration file and load (vars_file or  --extra-vars @file.yml)
 
 | variable | mandatory |default | description |
 |:--------:|:---------:|:------:|:------------|
@@ -47,7 +60,7 @@ Need to create a file (or via extra-vars ligne arguement) with variable needed :
 | group | no | | if "True" add the uid into cn=group,ou=Group... |
 
 ```
-ansible-playbook ldap_create_webpeople.yml --extra-vars @conf/webpeople.yml --extra-vars @conf/${USER}.yml --ask-vault
+ansible-playbook site.yml --extra-vars @conf/webpeople.yml --extra-vars @conf/${USER}.yml --ask-vault
 ```
 with file conf/webpeople.yml :
 ```
@@ -59,8 +72,21 @@ description: "2017/01/19 Ticket #9999 create account {{ uid }}"
 ```
 
 ## UnixAccount
+enable it with job: account
 
-Need to create a file (or via extra-vars ligne arguement) with variable needed :
+```
+- name: Create UnixAccount
+  hosts: localhost
+  gather_facts: yes
+  vars:
+  - job: account
+  vars_files:
+  - conf/people.yml
+  roles:
+  - ansible-ldap_entry
+```
+As need lot of variable, it's better to work from a variable file
+see sample files for exemples
 
 | variable | mandatory |default | description |
 |:--------:|:---------:|:------:|:------------|
@@ -79,25 +105,28 @@ Need to create a file (or via extra-vars ligne arguement) with variable needed :
 | group_access | no | | if "True" add the uid into cn=group,ou=Group. |
 
 ```
-ansible-playbook ldap_create_webpeople.yml --extra-vars @conf/webpeople.yml --extra-vars @conf/${USER}.yml --ask-vault
-```
-with file conf/webpeople.yml :
-```
-uid: test10
-sn: christian
-cn: CommonName
-mail: christian.XXX@XXXX.com
-description: "2017/01/19 Ticket #9999 create account {{ uid }}"
+ansible-playbook site.yml
+ansible-playbook site.yml --extra-vars @conf/people.yml --extra-vars @conf/${USER}.yml --ask-vault
 ```
 
 ## SSH Key
-* playbook : ldap_ssh_key.yml
+enable it with job: ssh
 
-Need to call it via :
 ```
-ansible-playbook ldap_ssh_key.yml --ask-vault-pass --extra-vars @conf/admin_user.yml
+- name: Update ssh key
+  hosts: localhost
+  gather_facts: yes
+  vars:
+  - job: ssh
+  - ou_people: "ou=FR,ou=Admins,ou=People"
+  vars_files:
+  - conf/admin_user2.yml
+  roles:
+  - role: ansible-ldap_entry
+    users: "{{ admin_users }}"
 ```
-Where the file contents a dictonnary of account with :
+
+Where the file contents a dictonnary of account with : (same syntax as cchurch.admin-users roles
 ```
 admin_users:
   - fullname: 'FirstName LastName'
@@ -107,6 +136,16 @@ admin_users:
   - fullname: '....'
     ...
 ```
+
+Note
+----
+if want to use {{ ansible_date_time.date }} in description, it's mandatory to use gather_facts: yes
+
+Known issue :
+- SSH module : TODO better detect non existing user
+  actualy add a simple failed_when: true
+  "msg": "Cannot search for attribute sshPublicKey" when the user don't exist
+- Unix Account : uid range is hardcode in task "create array or uidRange"
 
 License
 -------

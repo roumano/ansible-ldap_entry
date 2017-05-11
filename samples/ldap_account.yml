@@ -1,0 +1,9 @@
+---
+- name: Create UnixAccount
+  hosts: localhost
+  gather_facts: yes
+  vars_files: 
+  - conf/people.yml
+  roles:
+  - role: ansible-ldap_entry
+    job: account

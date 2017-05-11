@@ -1,2 +1,12 @@
 ---
 # tasks file for ldap_entry
+# ldap_create_people.yml ldap_create_webpeople.yml ldap_ssh_key.yml
+- name: if UnixAccount, create UnixAccount
+  include: ldap_create_people.yml
+  when: job == "account"
+- name: if WebAccount, create simple account
+  include: ldap_create_webpeople.yml
+  when: job == "webaccount"
+- name: if ssh, update ssh key
+  include: ldap_ssh_key.yml
+  when: job == "ssh"

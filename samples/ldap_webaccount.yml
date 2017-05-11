@@ -1,0 +1,12 @@
+---
+- name: Create WebAccount
+  hosts: localhost
+  gather_facts: yes
+  vars: 
+  - job: webaccount
+  - mail: christian.iuga@edifixio.com
+  - description: "{{ ansible_date_time.date }}: #9999 create account"
+  - dc: "dc=client,dc=com"
+  - server_uri: "ldaps://ldap_serveur/"
+  roles:
+  - ansible-ldap_entry
