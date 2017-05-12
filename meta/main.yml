@@ -1,0 +1,33 @@
+galaxy_info:
+  author: Christian Iuga
+  description: Role to create ldap account & update ssh key
+  company: edifixio
+  license: GPL
+  min_ansible_version: 2.3
+  platforms:
+  - name: EL
+    versions:
+    - all
+    - any
+    - 7
+    - 6
+  - name: Debian
+    versions:
+    - jessie
+  - name: RedHat
+    versions:
+    - all
+    - any
+    - 7
+    - 6
+  - name: Amazon
+    version:
+    - 2016.09
+    - 2017.03
+  galaxy_tags:
+  - ldap
+  - authentification
+  - sssd
+# It's not a real roles , it's a lookup_plugins ...
+#dependencies:
+#  - role: quinot.lookup_ldap

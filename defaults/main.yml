@@ -1,0 +1,37 @@
+---
+# defaults file for ldap_entry
+# job can be one of :
+# - account
+# - webaccount
+# - ssh
+# by default, do nothing
+job: none
+
+# Ldap variable
+# For ldap_entry & ldap_attr
+dc: "dc=client,dc=com"
+server_uri: "ldap://localhost:389"
+
+ou_people: "ou=People"
+ou_group: "ou=Group"
+ou_webpeople: "ou=Web_People,ou=People"
+uid_min: 5000
+uid_max: 6000
+# Better to add them into a ansible-vault :
+bind_dn: uid=readonly,{{ ou_people }},{{ dc }}
+bind_pw: ToBeDefine
+
+# For ldap_lookup (aka ldapsearch), need for ldap_create_people.yml
+ldap_lookup_config:
+  url: "{{ server_uri }}"
+  base: "{{ dc }}"
+  binddn: "{{ bind_dn }}"
+  bindpw: "{{ bind_pw }}"
+  scope: subtree
+  filter: (objectClass=*)
+  tls_reqcert: never
+  # Get ALL UidNumber
+AllUidNumber:
+  base: "{{ ou_people }},{{ dc }}"
+  value:
+  - AllUidNumber: always_list=True

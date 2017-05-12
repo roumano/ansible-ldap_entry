@@ -1,0 +1,16 @@
+# New module in ansible 2.3
+# http://docs.ansible.com/ansible/ldap_attr_module.html#ldap-attr
+# TODO better detect non existing user,
+#   actualy add a simple failed_when: true
+#   "msg": "Cannot search for attribute sshPublicKey" when the user don't exist
+---
+- name: Update sshPublicKey
+  ldap_attr:
+    dn: "uid={{ item.username }},{{ou_people}},{{ dc }}"
+    name: sshPublicKey
+    state: exact
+    values: "{{ item.pubkey }}"
+    server_uri: '{{ server_uri }}'
+    bind_dn: '{{ bind_dn }}'
+    bind_pw: '{{ bind_pw }}'
+  with_items : "{{ users }}"

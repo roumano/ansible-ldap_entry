@@ -1,0 +1,104 @@
+# New module on ansible 2.3 :
+# http://docs.ansible.com/ansible/ldap_entry_module.html
+---
+#Prepare ALL variable :
+- name: Get all uid
+  set_fact:
+    uidUsed: "{{ lookup('ldap' , wantlist=True , context='AllUidNumber', value='uidNumber') }}"
+  when: uidNumber is not defined
+
+- name: create array or uidRange
+  set_fact:
+    uidRange: "[{% for index in range(5000,6000) %}'{{ index }}',{% endfor %}]"
+  when: uidNumber is not defined
+
+- name: set uidNumber min of uidRange difference uidUsedi
+  set_fact:
+    uidNumber: "{{ uidRange | difference(uidUsed) | min }}"
+  when: uidNumber is not defined
+
+- name:  Set cn , sn , uidNumber , compagny , gidNumber , loginShell, mail
+  set_fact:
+    compagny: "{% if compagny is defined %}{{ compagny }}{% else %}{{ mail.split('@')[1].split('.')[0] }}{% endif %}"
+    ldap_param1:
+      cn: "{% if cn is defined %}{{ cn }}{% else %}{{ mail.split('@')[0].split('.')[1] }}{% endif %}"
+      sn: "{% if sn is defined %}{{ sn }}{% else %}{{ mail.split('@')[0].split('.')[0] }}{% endif %}"
+      mail: "{{ mail }}"
+      uidNumber: "{{ uidNumber }}"
+      gidNumber: "{{ gidNumber | default(uidNumber) }}"
+      loginShell: "{{ loginShell |default('/bin/bash') }}"
+
+# uid can use sn + cn so need to do it after :
+- name: Set uid , gecos
+  set_fact:
+    ldap_param2:
+      uid: "{% if uid is defined %}{{ uid }}{% else %}{{ ldap_param1.sn[0:1] }}{{ ldap_param1.cn }}{% endif %}"
+      gecos: "{% if gecos is defined %}{{ gecos }}{% else %}{{ ldap_param1.sn }} {{ ldap_param1.cn }}, {{ compagny }}{% endif %}"
+
+- name: Set description
+  set_fact:
+    ldap_param3:
+      description: "{{ description }}"
+  when: description is defined
+
+- name: Set homeDiretory
+  set_fact:
+    ldap_param4:
+      homeDirectory: "{% if homeDirectory is defined %}{{ homeDirectory }}{% else %}/home/{{ ldap_param2.uid }}{% endif %}"
+
+- name: Set sshPublicKey
+  set_fact:
+    ldap_param5:
+      sshPublicKey: "{{ sshPublicKey }}"
+  when: sshPublicKey is defined
+
+- name: Set host ssh permit
+  set_fact:
+    ldap_param6:
+      host: "{{ host }}"
+  when: host is defined
+
+- name: Set customer
+  set_fact:
+    ldap_param7:
+      customer: "{{ customer }}"
+  when: customer is defined
+
+# Create all variable together (to permit remove empty var
+- name: Merge Variable Together
+  set_fact:
+    ldap_param: "{{ ldap_param1|combine(ldap_param2|default({}),ldap_param3|default({}),ldap_param4|default({}),ldap_param5|default({}),ldap_param6|default({}),ldap_param7|default({}), recursive=True) }}"
+
+- name: debug
+  debug:
+    var: ldap_param
+
+- name: "Ask Confirmation to create {{ ldap_param.uid }}"
+  pause:
+    prompt: 'Please confirm you want to create This Unix Account! Press return to continue. Press Ctrl+c and then "a" to abort'
+
+- name: "Create Account {{ ldap_param.uid }}"
+  ldap_entry:
+    dn: uid={{ ldap_param.uid }},{{ ou_people }},{{ dc }}
+    objectClass:
+    - shadowAccount
+    - top
+    - posixAccount
+    - inetAccount
+    - account
+    - ldapPublicKey
+    attributes: "{{ ldap_param }}"
+    server_uri: '{{ server_uri }}'
+    bind_dn: '{{ bind_dn }}'
+    bind_pw: '{{ bind_pw }}'
+
+- name: "Add {{ ldap_param.uid }} to group {{ group_name }}"
+  ldap_attr:
+    dn: "{{ group_name }},{{ou_group}},{{ dc }}"
+    name: memberUid
+    state: present
+    values: "{{ ldap_param.uid }}"
+    server_uri: '{{ server_uri }}'
+    bind_dn: '{{ bind_dn }}'
+    bind_pw: '{{ bind_pw }}'
+  when: group_name is defined

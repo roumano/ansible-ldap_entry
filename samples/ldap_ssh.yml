@@ -1,0 +1,12 @@
+---
+- name: Update ssh key
+  hosts: localhost
+  gather_facts: yes
+  vars: 
+  - job: ssh
+  - ou_people: "ou=FR,ou=Admins,ou=People"
+  vars_files: 
+  - conf/admin_user.yml
+  roles:
+  - role: ansible-ldap_entry
+    users: "{{ admin_users }}"
